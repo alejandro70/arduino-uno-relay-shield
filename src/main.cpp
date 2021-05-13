@@ -8,7 +8,7 @@ int ledPin = 4;
 int buttonPin = PIN_A0;
 int relayState = LOW;
 int mode = 0;
-long periodTime = 10 * 1000;                     // 3 * 60 * 1000;                // periodo 3 minutos
+long periodTime = 10 * 1000;                    // periodo 3 minutos
 long dutyCycle[SPEED_MODES] = {0, 100, 66, 33}; // % de tiempo señal activa en un periodo
 int buttonState;
 int lastButtonState = HIGH;         // the previous reading from the input pin
@@ -17,7 +17,7 @@ unsigned long debounceDelay = 50;   // the debounce time; increase if the output
 SimpleTimer timer;
 int timerPeriod;
 int timerOff[SPEED_MODES];
- 
+
 void toggleRelay()
 {
   relayState = relayState == LOW ? HIGH : LOW;
@@ -81,7 +81,7 @@ void disableAll()
 void startCycle()
 {
   setRelayOn();
-  timer.restartTimer(timerPeriod);  
+  timer.restartTimer(timerPeriod);
   timer.restartTimer(timerOff[mode]);
 }
 
