@@ -10,7 +10,7 @@ int greenPin = PIN_A1;
 int buttonPin = PIN_A0;
 int relayState = LOW;
 int mode = 0;
-long periodTime = 3 * 60 * 1000;     // periodo 3 minutos
+long periodTime = 3L * 60L * 1000L;     // periodo 3 minutos
 long dutyCycle[] = {0, 100, 66, 33}; // % de tiempo señal activa en un periodo
 size_t numModes;
 int buttonState;
@@ -65,7 +65,7 @@ void setup()
   timerPeriod = timer.setInterval(periodTime, startCycle);
   for (size_t i = 0; i < numModes; i++)
   {
-    long activeTime = dutyCycle[i] * (periodTime / 100L);
+    long activeTime = (long)dutyCycle[i] * (long)(periodTime / 100L);
     timerOff[i] = timer.setInterval(activeTime, setRelayOff);
   }
 
