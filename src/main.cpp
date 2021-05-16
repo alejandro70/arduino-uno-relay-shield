@@ -1,35 +1,121 @@
 #include <Arduino.h>
 #include "SimpleTimer.h"
+#include <stdarg.h>
 
-#define SPEED_MODES 4
+#define SERIAL_PRINTF_MAX_BUFF 256
 
 int relayPin = 3;
-int ledPin = 4;
+int redPin = 4;
 int buttonPin = PIN_A0;
 int relayState = LOW;
 int mode = 0;
-long periodTime = 10 * 1000;                    // periodo 3 minutos
-long dutyCycle[SPEED_MODES] = {0, 100, 66, 33}; // % de tiempo señal activa en un periodo
+long periodTime = 10 * 1000;         // periodo 3 minutos
+long dutyCycle[] = {0, 100, 66, 33}; // % de tiempo señal activa en un periodo
+size_t numModes;
 int buttonState;
 int lastButtonState = HIGH;         // the previous reading from the input pin
 unsigned long lastDebounceTime = 0; // the last time the output pin was toggled
 unsigned long debounceDelay = 50;   // the debounce time; increase if the output flickers
 SimpleTimer timer;
 int timerPeriod;
-int timerOff[SPEED_MODES];
+int timerNextMode;
+int timerBlinkRed;
+int timerLog;
+int *timerOff;
 
-void toggleRelay()
+bool buttonPressed();
+void disableTimers();
+void nextMode();
+void setMode(int newMode);
+void setRelay(int state);
+void setRelayOff();
+void setRelayOn();
+void serialPrintf(const char *fmt, ...);
+void startCycle();
+void timerStart(int numTimer);
+void toggleRed();
+void log();
+
+void setup()
 {
-  relayState = relayState == LOW ? HIGH : LOW;
+  Serial.begin(9600);
+
+  pinMode(LED_BUILTIN, OUTPUT);
+  pinMode(redPin, OUTPUT);
+  pinMode(relayPin, OUTPUT);
+  pinMode(buttonPin, INPUT_PULLUP);
+  digitalWrite(redPin, LOW);
+  relayState = LOW;
   digitalWrite(relayPin, relayState);
-  digitalWrite(ledPin, relayState);
+
+  numModes = sizeof(dutyCycle) / sizeof(long);
+  timerOff = new int[numModes];
+  
+  //timerLog = timer.setInterval(1000, log);
+  timerNextMode = timer.setInterval(1000, nextMode);
+  timerBlinkRed = timer.setInterval(100, toggleRed);
+  timerPeriod = timer.setInterval(periodTime, startCycle);
+  for (size_t i = 0; i < numModes; i++)
+  {
+    long activeTime = dutyCycle[i] * (periodTime / 100L);
+    timerOff[i] = timer.setInterval(activeTime, setRelayOff);
+  }
+
+  setMode(0);
+}
+
+void loop()
+{
+  if (buttonPressed())
+  {
+    timerStart(timerNextMode);
+    timerStart(timerBlinkRed);
+  }
+
+  timer.run();
+}
+
+void log()
+{
+  serialPrintf("relayState=%d,mode=%d,maxModes=%d,buttonState=%d,lastButtonState=%d\n", relayState, mode, numModes, buttonState, lastButtonState);
+}
+
+void nextMode()
+{
+  int newMode = mode < numModes - 1 ? mode + 1 : 0;
+  setMode(newMode);
+}
+
+void setMode(int newMode)
+{
+  mode = newMode;
+  disableTimers();
+  if (mode == 0)
+  {
+    setRelayOff();
+  }
+  else if (mode == 1)
+  {
+    setRelayOn();
+  }
+  else
+  {
+    startCycle();
+  }
+}
+
+void startCycle()
+{
+  setRelayOn();
+  timerStart(timerPeriod);
+  timerStart(timerOff[mode]);
 }
 
 void setRelay(int state)
 {
   relayState = state;
   digitalWrite(relayPin, state);
-  digitalWrite(ledPin, state);
+  digitalWrite(redPin, state);
 }
 
 void setRelayOn()
@@ -69,71 +155,41 @@ bool buttonPressed()
   return pressed;
 }
 
-void disableAll()
+void disableTimers()
 {
+  timer.disable(timerNextMode);
+  timer.disable(timerBlinkRed);
   timer.disable(timerPeriod);
-  for (size_t i = 0; i < SPEED_MODES; i++)
+  for (size_t i = 0; i < numModes; i++)
   {
     timer.disable(timerOff[i]);
   }
 }
 
-void startCycle()
+void toggleRed()
 {
-  setRelayOn();
-  timer.restartTimer(timerPeriod);
-  timer.restartTimer(timerOff[mode]);
+  if (digitalRead(redPin) == LOW)
+    digitalWrite(redPin, HIGH);
+  else
+    digitalWrite(redPin, LOW);
 }
 
-void nextMode()
+void timerStart(int numTimer)
 {
-  disableAll();
-  mode = mode < SPEED_MODES - 1 ? mode + 1 : 0;
-
-  if (mode == 0)
-  {
-    setRelay(LOW);
-    return;
-  }
-
-  if (mode == 1)
-  {
-    setRelayOn();
-    return;
-  }
-
-  timer.enable(timerPeriod);
-  timer.enable(timerOff[mode]);
-  startCycle();
+  timer.enable(numTimer);
+  timer.restartTimer(numTimer);
 }
 
-void setup()
+void serialPrintf(const char *fmt, ...)
 {
-  Serial.begin(9600);
-
-  pinMode(LED_BUILTIN, OUTPUT);
-  pinMode(ledPin, OUTPUT);
-  pinMode(relayPin, OUTPUT);
-  pinMode(buttonPin, INPUT_PULLUP);
-  digitalWrite(ledPin, LOW);
-  digitalWrite(relayPin, LOW);
-
-  timerPeriod = timer.setInterval(periodTime, startCycle);
-  for (size_t i = 0; i < SPEED_MODES; i++)
-  {
-    long activeTime = dutyCycle[i] * (periodTime / 100L);
-    Serial.println(activeTime);
-    timerOff[i] = timer.setInterval(activeTime, setRelayOff);
-  }
-
-  mode = 0;
-  disableAll();
-}
-
-void loop()
-{
-  if (buttonPressed())
-    nextMode();
-
-  timer.run();
+  /* Buffer for storing the formatted data */
+  char buff[SERIAL_PRINTF_MAX_BUFF];
+  /* pointer to the variable arguments list */
+  va_list pargs;
+  /* Initialise pargs to point to the first optional argument */
+  va_start(pargs, fmt);
+  /* create the formatted data and store in buff */
+  vsnprintf(buff, SERIAL_PRINTF_MAX_BUFF, fmt, pargs);
+  va_end(pargs);
+  Serial.print(buff);
 }
