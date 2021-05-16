@@ -10,7 +10,7 @@ int greenPin = PIN_A1;
 int buttonPin = PIN_A0;
 int relayState = LOW;
 int mode = 0;
-long periodTime = 10 * 1000;         // periodo 3 minutos
+long periodTime = 3 * 60 * 1000;     // periodo 3 minutos
 long dutyCycle[] = {0, 100, 66, 33}; // % de tiempo señal activa en un periodo
 size_t numModes;
 int buttonState;
@@ -18,9 +18,12 @@ int lastButtonState = HIGH;         // the previous reading from the input pin
 unsigned long lastDebounceTime = 0; // the last time the output pin was toggled
 unsigned long debounceDelay = 50;   // the debounce time; increase if the output flickers
 SimpleTimer timer;
+int counterShowMode;
+int msShowMode = 50;
 int timerPeriod;
 int timerNextMode;
 int timerBlinkGreen;
+int timerShowMode;
 int timerLog;
 int *timerOff;
 
@@ -32,6 +35,7 @@ void setRelay(int state);
 void setRelayOff();
 void setRelayOn();
 void serialPrintf(const char *fmt, ...);
+void showMode();
 void startCycle();
 void timerStart(int numTimer);
 void toggleGreen();
@@ -53,10 +57,11 @@ void setup()
 
   numModes = sizeof(dutyCycle) / sizeof(long);
   timerOff = new int[numModes];
-  
+
   //timerLog = timer.setInterval(1000, log);
   timerNextMode = timer.setInterval(1000, nextMode);
   timerBlinkGreen = timer.setInterval(100, toggleGreen);
+  timerShowMode = timer.setInterval(msShowMode, showMode);
   timerPeriod = timer.setInterval(periodTime, startCycle);
   for (size_t i = 0; i < numModes; i++)
   {
@@ -167,6 +172,15 @@ void disableTimers()
   {
     timer.disable(timerOff[i]);
   }
+}
+
+void showMode()
+{
+  bool on = (mode == 0 && counterShowMode == 0);
+  on = on || mode == 1;
+  on = on || (mode > 1 && counterShowMode * msShowMode < dutyCycle[mode] * 10);
+  digitalWrite(greenPin, on ? HIGH : LOW);
+  counterShowMode = counterShowMode * msShowMode < 1000 ? counterShowMode + 1 : 0;
 }
 
 void toggleGreen()
