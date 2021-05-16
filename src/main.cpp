@@ -6,6 +6,7 @@
 
 int relayPin = 3;
 int redPin = 4;
+int greenPin = PIN_A1;
 int buttonPin = PIN_A0;
 int relayState = LOW;
 int mode = 0;
@@ -19,7 +20,7 @@ unsigned long debounceDelay = 50;   // the debounce time; increase if the output
 SimpleTimer timer;
 int timerPeriod;
 int timerNextMode;
-int timerBlinkRed;
+int timerBlinkGreen;
 int timerLog;
 int *timerOff;
 
@@ -33,7 +34,7 @@ void setRelayOn();
 void serialPrintf(const char *fmt, ...);
 void startCycle();
 void timerStart(int numTimer);
-void toggleRed();
+void toggleGreen();
 void log();
 
 void setup()
@@ -42,9 +43,11 @@ void setup()
 
   pinMode(LED_BUILTIN, OUTPUT);
   pinMode(redPin, OUTPUT);
+  pinMode(greenPin, OUTPUT);
   pinMode(relayPin, OUTPUT);
   pinMode(buttonPin, INPUT_PULLUP);
   digitalWrite(redPin, LOW);
+  digitalWrite(greenPin, LOW);
   relayState = LOW;
   digitalWrite(relayPin, relayState);
 
@@ -53,7 +56,7 @@ void setup()
   
   //timerLog = timer.setInterval(1000, log);
   timerNextMode = timer.setInterval(1000, nextMode);
-  timerBlinkRed = timer.setInterval(100, toggleRed);
+  timerBlinkGreen = timer.setInterval(100, toggleGreen);
   timerPeriod = timer.setInterval(periodTime, startCycle);
   for (size_t i = 0; i < numModes; i++)
   {
@@ -69,7 +72,7 @@ void loop()
   if (buttonPressed())
   {
     timerStart(timerNextMode);
-    timerStart(timerBlinkRed);
+    timerStart(timerBlinkGreen);
   }
 
   timer.run();
@@ -158,7 +161,7 @@ bool buttonPressed()
 void disableTimers()
 {
   timer.disable(timerNextMode);
-  timer.disable(timerBlinkRed);
+  timer.disable(timerBlinkGreen);
   timer.disable(timerPeriod);
   for (size_t i = 0; i < numModes; i++)
   {
@@ -166,12 +169,12 @@ void disableTimers()
   }
 }
 
-void toggleRed()
+void toggleGreen()
 {
-  if (digitalRead(redPin) == LOW)
-    digitalWrite(redPin, HIGH);
+  if (digitalRead(greenPin) == LOW)
+    digitalWrite(greenPin, HIGH);
   else
-    digitalWrite(redPin, LOW);
+    digitalWrite(greenPin, LOW);
 }
 
 void timerStart(int numTimer)
