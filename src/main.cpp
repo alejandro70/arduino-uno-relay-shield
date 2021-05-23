@@ -10,8 +10,8 @@ int greenPin = PIN_A1;
 int buttonPin = PIN_A0;
 int relayState = LOW;
 int mode = 0;
-long periodTime = 3L * 60L * 1000L;     // periodo 3 minutos
-long dutyCycle[] = {0, 100, 66, 33}; // % de tiempo señal activa en un periodo
+long periodTime = 1L * 60L * 1000L;     // periodo del ciclo de trabajo
+long dutyCycle[] = {0, 100, 66}; // % de tiempo señal activa en un periodo
 size_t numModes;
 int buttonState;
 int lastButtonState = HIGH;         // the previous reading from the input pin
@@ -76,8 +76,9 @@ void loop()
 {
   if (buttonPressed())
   {
-    timerStart(timerNextMode);
-    timerStart(timerBlinkGreen);
+    nextMode();
+    //timerStart(timerNextMode);
+    //timerStart(timerBlinkGreen);
   }
 
   timer.run();
